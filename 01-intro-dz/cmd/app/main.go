@@ -19,7 +19,6 @@ func main() {
 	fmt.Println(quote.Go())
 	fmt.Println(quote.Hello())
 	fmt.Println(quote.Opt())
-	fmt.Println("\n")
 
 	// Request a greeting message.
 	_, err := greetings.Hello("")
