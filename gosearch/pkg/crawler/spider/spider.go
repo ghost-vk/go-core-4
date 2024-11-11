@@ -13,7 +13,7 @@ import (
 // Service - служба поискового робота.
 type Service struct{}
 
-// New - констрктор службы поискового робота.
+// New - конструктор службы поискового робота.
 func New() *Service {
 	s := Service{}
 	return &s
@@ -80,7 +80,7 @@ func parse(url, baseurl string, depth int, data map[string]string) error {
 	return nil
 }
 
-// pageTitle осуществляет рекурсивный обход HTML-страницы и возвращает значение элемента <tittle>.
+// pageTitle осуществляет рекурсивный обход HTML-страницы и возвращает значение элемента <title>.
 func pageTitle(n *html.Node) string {
 	var title string
 	if n.Type == html.ElementNode && n.Data == "title" && n.FirstChild != nil {

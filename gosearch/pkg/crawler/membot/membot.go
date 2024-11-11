@@ -5,7 +5,7 @@ import "github.com/go-core-4/gosearch/pkg/crawler"
 // Service - имитация служба поискового робота.
 type Service struct{}
 
-// New - констрктор имитации службы поискового робота.
+// New - конструктор имитации службы поискового робота.
 func New() *Service {
 	s := Service{}
 	return &s
