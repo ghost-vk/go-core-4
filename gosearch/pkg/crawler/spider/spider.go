@@ -3,6 +3,7 @@
 package spider
 
 import (
+	"math/rand/v2"
 	"net/http"
 	"strings"
 
@@ -28,6 +29,7 @@ func (s *Service) Scan(url string, depth int) (data []crawler.Document, err erro
 
 	for url, title := range pages {
 		item := crawler.Document{
+			ID:    rand.IntN(100_000_000),
 			URL:   url,
 			Title: title,
 		}
