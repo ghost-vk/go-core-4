@@ -8,36 +8,23 @@ import (
 
 // инвертированный индекс
 type Index struct {
-	items   map[string][]int
-	storage []crawler.Document
+	items map[string][]int
 }
-
-// Хранение индексированных документов
-// map[string]int
-// map[string][]int
-// map[string]map[int]bool
 
 func New() *Index {
 	idx := Index{}
 	idx.items = make(map[string][]int)
-	idx.storage = []crawler.Document{}
 	return &idx
 }
 
 func (idx *Index) Save(docs []crawler.Document) {
-	for docid, doc := range docs {
-		idx.storage = append(idx.storage, doc)
+	for _, doc := range docs {
 		for _, word := range strings.Split(doc.Title, " ") {
-			idx.items[word] = append(idx.items[word], docid)
+			idx.items[word] = append(idx.items[word], doc.ID)
 		}
 	}
 }
 
-func (idx *Index) Find(word string) []crawler.Document {
-	items := idx.items[word]
-	res := make([]crawler.Document, 0)
-	for _, item := range items {
-		res = append(res, idx.storage[item])
-	}
-	return res
+func (idx *Index) Find(word string) []int {
+	return idx.items[word]
 }
