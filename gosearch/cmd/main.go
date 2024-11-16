@@ -1,8 +1,10 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/go-core-4/gosearch/pkg/crawler"
@@ -10,34 +12,47 @@ import (
 	"github.com/go-core-4/gosearch/pkg/index"
 )
 
+type Storage struct {
+	documents []crawler.Document
+}
+
 func main() {
 	in := parseInput()
 
+	storage := Storage{
+		documents: make([]crawler.Document, 0),
+	}
+
 	spider := spider.New()
-	pages1, err := scan(spider, "https://go.dev")
+	godevDocs, err := scan(spider, "https://go.dev")
 	if err != nil {
 		fmt.Println("error go.dev scan page", err.Error())
 	}
 
-	idx := index.New()
-	idx.Save(pages1)
-	res := idx.Find(in.s)
+	// For debug
+	// godevDocs := []crawler.Document{
+	// 	{ID: 25375595, URL: "https://go.dev/learn#featured-books", Title: "Get Started - The Go Programming Language", Body: ""},
+	// 	{ID: 81644140, URL: "https://go.dev/pkg", Title: "Standard library - Go Packages", Body: ""},
+	// 	{ID: 77574494, URL: "https://go.dev/conduct", Title: "Go Community Code of Conduct - The Go Programming Language", Body: ""},
+	// }
 
-	for _, doc := range res {
-		fmt.Println(doc)
+	golangDocs, err := scan(spider, "https://golang.org")
+	if err != nil {
+		fmt.Println("error scan golang.org page", err.Error())
 	}
 
-	// pages2, err := scan(spider, "https://golang.org")
-	// if err != nil {
-	// 	fmt.Println("error scan golang.org page", err.Error())
-	// }
-	// pages2 := []crawler.Document{}
+	storage.documents = append(storage.documents, append(godevDocs, golangDocs...)...)
+	sort.Sort(ById(storage.documents))
 
-	// for _, p := range append(pages1, pages2...) {
-	// 	if strings.Contains(strings.ToLower(p.Title), in.s) {
-	// 		fmt.Println("ID=", p.ID, p.Title, "=>", p.URL)
-	// 	}
-	// }
+	idx := index.New()
+	idx.Save(godevDocs)
+	docIds := idx.Find(in.s)
+	// docIds := idx.Find("package")
+
+	for _, id := range docIds {
+		doc, _ := binarySearch(id, storage.documents)
+		fmt.Println(doc)
+	}
 }
 
 func scan(searchService *spider.Service, url string) ([]crawler.Document, error) {
@@ -61,4 +76,37 @@ func parseInput() Input {
 
 type Input struct {
 	s string
+}
+
+type ById []crawler.Document
+
+func (items ById) Len() int {
+	return len(items)
+}
+
+func (items ById) Swap(i, j int) {
+	items[i], items[j] = items[j], items[i]
+}
+
+func (items ById) Less(i, j int) bool {
+	return items[i].ID < items[j].ID
+}
+
+func binarySearch(targetId int, documents []crawler.Document) (crawler.Document, error) {
+	from := 0
+	to := len(documents) - 1
+	for to >= from {
+		mid := (from + to) / 2
+		doc := documents[mid]
+		if doc.ID == targetId {
+			return doc, nil
+		}
+		if targetId > doc.ID {
+			from = mid + 1
+		} else {
+			to = mid - 1
+		}
+	}
+
+	return crawler.Document{}, errors.New("document not found")
 }
