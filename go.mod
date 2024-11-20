@@ -8,6 +8,7 @@ require (
 )
 
 require (
+	github.com/DmitriyVTitov/size v1.5.0
 	golang.org/x/text v0.20.0 // indirect
 	rsc.io/sampler v1.3.0 // indirect
 )
