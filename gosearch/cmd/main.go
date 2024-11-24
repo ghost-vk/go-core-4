@@ -4,6 +4,9 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
+	"log"
+	"os"
 	"sort"
 	"strings"
 
@@ -40,6 +43,21 @@ func main() {
 	if err != nil {
 		fmt.Println("error scan golang.org page", err.Error())
 	}
+
+	f, err := os.Create("./cache.txt")
+	if err != nil {
+		log.Printf("Error create file: %v", err.Error())
+		return
+	}
+	defer f.Close()
+
+	serialized, err := serialize(godevDocs)
+	if err != nil {
+		log.Printf("Error serialize results: %v", err.Error())
+		return
+	}
+
+	cache(f, serialized)
 
 	storage.documents = append(storage.documents, append(godevDocs, golangDocs...)...)
 	sort.Sort(ById(storage.documents))
@@ -109,4 +127,17 @@ func binarySearch(targetId int, documents []crawler.Document) (crawler.Document,
 	}
 
 	return crawler.Document{}, errors.New("document not found")
+}
+
+func cache(w io.Writer, data []byte) {
+	_, err := w.Write(data)
+	if err != nil {
+		log.Printf("Error write to file: %v", err.Error())
+		return
+	}
+}
+
+func serialize([]crawler.Document) ([]byte, error) {
+	// todo implement it
+	return []byte{}, nil
 }
