@@ -144,26 +144,28 @@ func cache(w io.Writer, data []byte) {
 	}
 }
 
+type s struct {
+	ID    int    `json:"id"`
+	URL   string `json:"url"`
+	Title string `json:"title"`
+	Body  string `json:"body"`
+}
+
 func serialize(docs []crawler.Document) ([]byte, error) {
 	result := []byte{}
-	var s struct {
-		ID    int    `json:"id"`
-		URL   string `json:"url"`
-		Title string `json:"title"`
-		Body  string `json:"body"`
-	}
+	buf := []s{}
 	for _, doc := range docs {
-		s.ID = doc.ID
-		s.URL = doc.URL
-		s.Title = doc.Title
-		s.Body = doc.Body
-		bytes, err := json.Marshal(s)
-		if err != nil {
-			log.Printf("Error write to file: %v", err.Error())
-			return nil, errors.New("error marshal document")
-		}
-		result = append(result, []byte("\n")...)
-		result = append(result, bytes...)
+		buf = append(buf, s{
+			ID:    doc.ID,
+			URL:   doc.URL,
+			Title: doc.Title,
+			Body:  doc.Body,
+		})
+	}
+	result, err := json.Marshal(buf)
+	if err != nil {
+		log.Printf("Error serialize: %v", err.Error())
+		return nil, errors.New("error serialize document")
 	}
 	return result, nil
 }
