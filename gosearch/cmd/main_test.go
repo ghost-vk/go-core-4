@@ -76,7 +76,7 @@ func Test_serialize(t *testing.T) {
 					},
 				},
 			},
-			want:    []byte("\n{\"ID\":1,\"URL\":\"http://example.com\",\"Title\":\"Example\",\"Body\":\"This is an example document.\"}"),
+			want:    []byte("\n{\"id\":1,\"url\":\"http://example.com\",\"title\":\"Example\",\"body\":\"This is an example document.\"}"),
 			wantErr: false,
 		},
 		{
@@ -97,7 +97,7 @@ func Test_serialize(t *testing.T) {
 					},
 				},
 			},
-			want:    []byte("\n{\"ID\":1,\"URL\":\"http://example.com\",\"Title\":\"Example\",\"Body\":\"This is an example document.\"}\n{\"ID\":2,\"URL\":\"http://test.com\",\"Title\":\"Test\",\"Body\":\"This is another document.\"}"),
+			want:    []byte("\n{\"id\":1,\"url\":\"http://example.com\",\"title\":\"Example\",\"body\":\"This is an example document.\"}\n{\"id\":2,\"url\":\"http://test.com\",\"title\":\"Test\",\"body\":\"This is another document.\"}"),
 			wantErr: false,
 		},
 		{
@@ -120,7 +120,7 @@ func Test_serialize(t *testing.T) {
 					},
 				},
 			},
-			want:    []byte("\n{\"ID\":1,\"URL\":\"http://example.com\",\"Title\":\"Title with \\\"quotes\\\" and \\\\slashes\\\\\",\"Body\":\"Body with newline\\nand tab\\tcharacters.\"}"),
+			want:    []byte("\n{\"id\":1,\"url\":\"http://example.com\",\"title\":\"Title with \\\"quotes\\\" and \\\\slashes\\\\\",\"body\":\"Body with newline\\nand tab\\tcharacters.\"}"),
 			wantErr: false,
 		},
 	}

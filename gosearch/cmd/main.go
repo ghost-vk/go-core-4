@@ -27,6 +27,12 @@ func main() {
 		documents: make([]crawler.Document, 0),
 	}
 
+	_, err := os.ReadFile("./cache.txt")
+	if err != nil {
+		log.Printf("Error read cache file: %v", err.Error())
+		return
+	}
+
 	spider := spider.New()
 	godevDocs, err := scan(spider, "https://go.dev")
 	if err != nil {
@@ -140,8 +146,18 @@ func cache(w io.Writer, data []byte) {
 
 func serialize(docs []crawler.Document) ([]byte, error) {
 	result := []byte{}
+	var s struct {
+		ID    int    `json:"id"`
+		URL   string `json:"url"`
+		Title string `json:"title"`
+		Body  string `json:"body"`
+	}
 	for _, doc := range docs {
-		bytes, err := json.Marshal(doc)
+		s.ID = doc.ID
+		s.URL = doc.URL
+		s.Title = doc.Title
+		s.Body = doc.Body
+		bytes, err := json.Marshal(s)
 		if err != nil {
 			log.Printf("Error write to file: %v", err.Error())
 			return nil, errors.New("error marshal document")
