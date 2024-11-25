@@ -27,50 +27,61 @@ func main() {
 		documents: make([]crawler.Document, 0),
 	}
 
-	_, err := os.ReadFile("./cache.txt")
-	if err != nil {
+	cachedDocs, err := os.ReadFile("./cache.txt")
+	if os.IsNotExist(err) {
+		log.Println("Cache file not exists")
+	} else if err != nil {
 		log.Printf("Error read cache file: %v", err.Error())
 		return
 	}
 
-	spider := spider.New()
-	godevDocs, err := scan(spider, "https://go.dev")
-	if err != nil {
-		fmt.Println("error go.dev scan page", err.Error())
+	if len(cachedDocs) > 0 {
+		storage.documents, err = deserialize(cachedDocs)
+		if err != nil {
+			log.Printf("Error read serialize cache file content: %v", err.Error())
+			return
+		}
+	} else {
+		spider := spider.New()
+		godevDocs, err := scan(spider, "https://go.dev")
+		if err != nil {
+			fmt.Println("error go.dev scan page", err.Error())
+		}
+
+		// For debug
+		// godevDocs := []crawler.Document{
+		// 	{ID: 25375595, URL: "https://go.dev/learn#featured-books", Title: "Get Started - The Go Programming Language", Body: ""},
+		// 	{ID: 81644140, URL: "https://go.dev/pkg", Title: "Standard library - Go Packages", Body: ""},
+		// 	{ID: 77574494, URL: "https://go.dev/conduct", Title: "Go Community Code of Conduct - The Go Programming Language", Body: ""},
+		// }
+
+		golangDocs, err := scan(spider, "https://golang.org")
+		if err != nil {
+			fmt.Println("error scan golang.org page", err.Error())
+		}
+
+		f, err := os.Create("./cache.txt")
+		if err != nil {
+			log.Printf("Error create file: %v", err.Error())
+			return
+		}
+		defer f.Close()
+
+		storage.documents = append(storage.documents, append(godevDocs, golangDocs...)...)
+
+		serialized, err := serialize(storage.documents)
+		if err != nil {
+			log.Printf("Error serialize results: %v", err.Error())
+			return
+		}
+
+		cache(f, serialized)
 	}
 
-	// For debug
-	// godevDocs := []crawler.Document{
-	// 	{ID: 25375595, URL: "https://go.dev/learn#featured-books", Title: "Get Started - The Go Programming Language", Body: ""},
-	// 	{ID: 81644140, URL: "https://go.dev/pkg", Title: "Standard library - Go Packages", Body: ""},
-	// 	{ID: 77574494, URL: "https://go.dev/conduct", Title: "Go Community Code of Conduct - The Go Programming Language", Body: ""},
-	// }
-
-	golangDocs, err := scan(spider, "https://golang.org")
-	if err != nil {
-		fmt.Println("error scan golang.org page", err.Error())
-	}
-
-	f, err := os.Create("./cache.txt")
-	if err != nil {
-		log.Printf("Error create file: %v", err.Error())
-		return
-	}
-	defer f.Close()
-
-	serialized, err := serialize(godevDocs)
-	if err != nil {
-		log.Printf("Error serialize results: %v", err.Error())
-		return
-	}
-
-	cache(f, serialized)
-
-	storage.documents = append(storage.documents, append(godevDocs, golangDocs...)...)
 	sort.Sort(ById(storage.documents))
 
 	idx := index.New()
-	idx.Save(godevDocs)
+	idx.Save(storage.documents)
 	docIds := idx.Find(in.s)
 	// docIds := idx.Find("package")
 
@@ -152,7 +163,6 @@ type s struct {
 }
 
 func serialize(docs []crawler.Document) ([]byte, error) {
-	result := []byte{}
 	buf := []s{}
 	for _, doc := range docs {
 		buf = append(buf, s{
@@ -168,4 +178,23 @@ func serialize(docs []crawler.Document) ([]byte, error) {
 		return nil, errors.New("error serialize document")
 	}
 	return result, nil
+}
+
+func deserialize(raw []byte) ([]crawler.Document, error) {
+	var parsed []s
+	err := json.Unmarshal(raw, &parsed)
+	if err != nil {
+		log.Printf("Error deserialize: %v", err.Error())
+		return nil, errors.New("error deserialize document")
+	}
+	buf := []crawler.Document{}
+	for _, p := range parsed {
+		buf = append(buf, crawler.Document{
+			ID:    p.ID,
+			URL:   p.URL,
+			Title: p.Title,
+			Body:  p.Body,
+		})
+	}
+	return buf, nil
 }
