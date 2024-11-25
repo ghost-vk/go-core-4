@@ -53,3 +53,87 @@ func Test_binarySearch(t *testing.T) {
 		})
 	}
 }
+
+func Test_serialize(t *testing.T) {
+	type args struct {
+		docs []crawler.Document
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    []byte
+		wantErr bool
+	}{
+		{
+			name: "Single valid document",
+			args: args{
+				docs: []crawler.Document{
+					{
+						ID:    1,
+						URL:   "http://example.com",
+						Title: "Example",
+						Body:  "This is an example document.",
+					},
+				},
+			},
+			want:    []byte("\n{\"ID\":1,\"URL\":\"http://example.com\",\"Title\":\"Example\",\"Body\":\"This is an example document.\"}"),
+			wantErr: false,
+		},
+		{
+			name: "Multiple valid documents",
+			args: args{
+				docs: []crawler.Document{
+					{
+						ID:    1,
+						URL:   "http://example.com",
+						Title: "Example",
+						Body:  "This is an example document.",
+					},
+					{
+						ID:    2,
+						URL:   "http://test.com",
+						Title: "Test",
+						Body:  "This is another document.",
+					},
+				},
+			},
+			want:    []byte("\n{\"ID\":1,\"URL\":\"http://example.com\",\"Title\":\"Example\",\"Body\":\"This is an example document.\"}\n{\"ID\":2,\"URL\":\"http://test.com\",\"Title\":\"Test\",\"Body\":\"This is another document.\"}"),
+			wantErr: false,
+		},
+		{
+			name: "Empty input",
+			args: args{
+				docs: []crawler.Document{},
+			},
+			want:    []byte{},
+			wantErr: false,
+		},
+		{
+			name: "Document with special characters",
+			args: args{
+				docs: []crawler.Document{
+					{
+						ID:    1,
+						URL:   "http://example.com",
+						Title: "Title with \"quotes\" and \\slashes\\",
+						Body:  "Body with newline\nand tab\tcharacters.",
+					},
+				},
+			},
+			want:    []byte("\n{\"ID\":1,\"URL\":\"http://example.com\",\"Title\":\"Title with \\\"quotes\\\" and \\\\slashes\\\\\",\"Body\":\"Body with newline\\nand tab\\tcharacters.\"}"),
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := serialize(tt.args.docs)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("serialize() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("serialize() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

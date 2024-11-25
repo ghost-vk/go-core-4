@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -137,7 +138,16 @@ func cache(w io.Writer, data []byte) {
 	}
 }
 
-func serialize([]crawler.Document) ([]byte, error) {
-	// todo implement it
-	return []byte{}, nil
+func serialize(docs []crawler.Document) ([]byte, error) {
+	result := []byte{}
+	for _, doc := range docs {
+		bytes, err := json.Marshal(doc)
+		if err != nil {
+			log.Printf("Error write to file: %v", err.Error())
+			return nil, errors.New("error marshal document")
+		}
+		result = append(result, []byte("\n")...)
+		result = append(result, bytes...)
+	}
+	return result, nil
 }
