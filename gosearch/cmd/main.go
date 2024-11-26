@@ -27,21 +27,21 @@ func main() {
 		documents: make([]crawler.Document, 0),
 	}
 
-	cachedDocs, err := os.ReadFile("./cache.txt")
-	if os.IsNotExist(err) {
-		log.Println("Cache file not exists")
-	} else if err != nil {
-		log.Printf("Error read cache file: %v", err.Error())
+	f, err := os.OpenFile("./cache.txt", os.O_RDWR|os.O_CREATE, 0644)
+	if err != nil {
+		log.Printf("Error create or read cache file: %v", err.Error())
 		return
 	}
+	defer f.Close()
 
-	if len(cachedDocs) > 0 {
-		storage.documents, err = deserialize(cachedDocs)
-		if err != nil {
-			log.Printf("Error read serialize cache file content: %v", err.Error())
-			return
-		}
-	} else {
+	fi, err := f.Stat()
+	if err != nil {
+		log.Printf("Error stat file: %v", err.Error())
+		return
+	}
+	restore(f, &storage, fi.Size())
+
+	if len(storage.documents) == 0 {
 		spider := spider.New()
 		godevDocs, err := scan(spider, "https://go.dev")
 		if err != nil {
@@ -82,7 +82,9 @@ func main() {
 
 	idx := index.New()
 	idx.Save(storage.documents)
+
 	docIds := idx.Find(in.s)
+	// For debug
 	// docIds := idx.Find("package")
 
 	for _, id := range docIds {
@@ -155,7 +157,23 @@ func cache(w io.Writer, data []byte) {
 	}
 }
 
-type s struct {
+func restore(r io.Reader, s *Storage, size int64) {
+	data := make([]byte, size)
+	for {
+		_, err := r.Read(data)
+		if err == io.EOF {
+			break
+		}
+	}
+	docs, err := deserialize(data)
+	if err != nil {
+		log.Printf("Error deserialize: %v", err.Error())
+		return
+	}
+	s.documents = docs
+}
+
+type documentMap struct {
 	ID    int    `json:"id"`
 	URL   string `json:"url"`
 	Title string `json:"title"`
@@ -163,9 +181,9 @@ type s struct {
 }
 
 func serialize(docs []crawler.Document) ([]byte, error) {
-	buf := []s{}
+	buf := []documentMap{}
 	for _, doc := range docs {
-		buf = append(buf, s{
+		buf = append(buf, documentMap{
 			ID:    doc.ID,
 			URL:   doc.URL,
 			Title: doc.Title,
@@ -181,7 +199,7 @@ func serialize(docs []crawler.Document) ([]byte, error) {
 }
 
 func deserialize(raw []byte) ([]crawler.Document, error) {
-	var parsed []s
+	var parsed []documentMap
 	err := json.Unmarshal(raw, &parsed)
 	if err != nil {
 		log.Printf("Error deserialize: %v", err.Error())
