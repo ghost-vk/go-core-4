@@ -1,81 +1,53 @@
 package main
 
 import (
-	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
-	"io"
 	"log"
-	"os"
 	"sort"
 	"strings"
 
 	"github.com/go-core-4/gosearch/pkg/crawler"
 	"github.com/go-core-4/gosearch/pkg/crawler/spider"
 	"github.com/go-core-4/gosearch/pkg/index"
+	"github.com/go-core-4/gosearch/pkg/persistence"
 )
 
-type Storage struct {
+type MemStorage struct {
 	documents []crawler.Document
 }
 
 func main() {
 	in := parseInput()
+	// for debug
+	// _ = parseInput()
 
-	storage := Storage{
+	storage := MemStorage{
 		documents: make([]crawler.Document, 0),
 	}
 
-	f, err := os.OpenFile("./cache.txt", os.O_RDWR|os.O_CREATE, 0644)
+	persFile := "./cache.json"
+	pers := persistence.New(persFile)
+	documents, err := pers.Documents()
 	if err != nil {
-		log.Printf("Error create or read cache file: %v", err.Error())
-		return
+		log.Printf("Error read documents from file %v: %v", persFile, err)
 	}
-	defer f.Close()
 
-	fi, err := f.Stat()
-	if err != nil {
-		log.Printf("Error stat file: %v", err.Error())
-		return
-	}
-	restore(f, &storage, fi.Size())
-
-	if len(storage.documents) == 0 {
+	if len(documents) == 0 {
 		spider := spider.New()
 		godevDocs, err := scan(spider, "https://go.dev")
 		if err != nil {
 			fmt.Println("error go.dev scan page", err.Error())
 		}
-
-		// For debug
-		// godevDocs := []crawler.Document{
-		// 	{ID: 25375595, URL: "https://go.dev/learn#featured-books", Title: "Get Started - The Go Programming Language", Body: ""},
-		// 	{ID: 81644140, URL: "https://go.dev/pkg", Title: "Standard library - Go Packages", Body: ""},
-		// 	{ID: 77574494, URL: "https://go.dev/conduct", Title: "Go Community Code of Conduct - The Go Programming Language", Body: ""},
-		// }
-
 		golangDocs, err := scan(spider, "https://golang.org")
 		if err != nil {
 			fmt.Println("error scan golang.org page", err.Error())
 		}
-
-		f, err := os.Create("./cache.txt")
-		if err != nil {
-			log.Printf("Error create file: %v", err.Error())
-			return
-		}
-		defer f.Close()
-
 		storage.documents = append(storage.documents, append(godevDocs, golangDocs...)...)
-
-		serialized, err := serialize(storage.documents)
-		if err != nil {
-			log.Printf("Error serialize results: %v", err.Error())
-			return
-		}
-
-		cache(f, serialized)
+		pers.Save(storage.documents)
+	} else {
+		storage.documents = documents
 	}
 
 	sort.Sort(ById(storage.documents))
@@ -84,7 +56,7 @@ func main() {
 	idx.Save(storage.documents)
 
 	docIds := idx.Find(in.s)
-	// For debug
+	// for debug
 	// docIds := idx.Find("package")
 
 	for _, id := range docIds {
@@ -147,72 +119,4 @@ func binarySearch(targetId int, documents []crawler.Document) (crawler.Document,
 	}
 
 	return crawler.Document{}, errors.New("document not found")
-}
-
-func cache(w io.Writer, data []byte) {
-	_, err := w.Write(data)
-	if err != nil {
-		log.Printf("Error write to file: %v", err.Error())
-		return
-	}
-}
-
-func restore(r io.Reader, s *Storage, size int64) {
-	data := make([]byte, size)
-	for {
-		_, err := r.Read(data)
-		if err == io.EOF {
-			break
-		}
-	}
-	docs, err := deserialize(data)
-	if err != nil {
-		log.Printf("Error deserialize: %v", err.Error())
-		return
-	}
-	s.documents = docs
-}
-
-type documentMap struct {
-	ID    int    `json:"id"`
-	URL   string `json:"url"`
-	Title string `json:"title"`
-	Body  string `json:"body"`
-}
-
-func serialize(docs []crawler.Document) ([]byte, error) {
-	buf := []documentMap{}
-	for _, doc := range docs {
-		buf = append(buf, documentMap{
-			ID:    doc.ID,
-			URL:   doc.URL,
-			Title: doc.Title,
-			Body:  doc.Body,
-		})
-	}
-	result, err := json.Marshal(buf)
-	if err != nil {
-		log.Printf("Error serialize: %v", err.Error())
-		return nil, errors.New("error serialize document")
-	}
-	return result, nil
-}
-
-func deserialize(raw []byte) ([]crawler.Document, error) {
-	var parsed []documentMap
-	err := json.Unmarshal(raw, &parsed)
-	if err != nil {
-		log.Printf("Error deserialize: %v", err.Error())
-		return nil, errors.New("error deserialize document")
-	}
-	buf := []crawler.Document{}
-	for _, p := range parsed {
-		buf = append(buf, crawler.Document{
-			ID:    p.ID,
-			URL:   p.URL,
-			Title: p.Title,
-			Body:  p.Body,
-		})
-	}
-	return buf, nil
 }
